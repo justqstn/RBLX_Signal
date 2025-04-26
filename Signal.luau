@@ -24,7 +24,7 @@ export type ISignal = {
 	WaitForSignal:		  (Name: string, Timeout: number?) -> ISignal,
 	
 	Wait:				  (self: ISignal) -> nil,
-	Destroy: 			  (self: ISignal) -> nil,
+	DisconnectAll: 		  (self: ISignal) -> nil,
 	Fire: 				  (self: ISignal, ...any) -> nil,
 	FireAsync:			  (self: ISignal, ...any) -> nil,
 	Connect: 			  (self: ISignal, (...any) -> any) -> IConnection,
@@ -108,14 +108,13 @@ function Signal:Connect(Function: (...any) -> nil): IConnection
 	return result
 end
 
--- Destroys current signal and clears all variables.
-function Signal:Destroy() 
+-- Disconnects all Connections of a signal.
+function Signal:DisconnectAll() 
 	for _, connection in pairs(self.Connections) do
 		connection:Disconnect()
 	end
-	self.Connections = nil
-	self.Name = nil
-	setmetatable(self, nil)
+	
+	table.clear(self.Connections)
 end
 
 -- Disconnects connection from a signal.
