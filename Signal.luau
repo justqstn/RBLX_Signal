@@ -1,4 +1,4 @@
---!native
+--!strict
 --[[
 	Signal (v1.0)
 	By just_qstn (@LennyGamer228)
@@ -7,45 +7,38 @@
 --]]
 
 
+type IConnection_fields = {
+	Signal: 			  any,
+	Function: 			  (...any) -> nil,
+}
 
-export type IConnection = {
-	Signal: 			  ISignal,
-	Disconnect: 		  (self: IConnection) -> 	  nil,
-	Function: 			  (...any) -> any,
-} 
-
-export type ISignal = {
+type ISignal_fields = {
 	Connections: 		  {[IConnection]: IConnection},
 	Name: 				  string?,
 	Yielded:			  boolean,
-	
-	new: 				  (Name: string?) -> ISignal,
-	Get:				  (Name: string) -> ISignal,
-	WaitForSignal:		  (Name: string, Timeout: number?) -> ISignal,
-	
-	Wait:				  (self: ISignal) -> nil,
-	DisconnectAll: 		  (self: ISignal) -> nil,
-	Fire: 				  (self: ISignal, ...any) -> nil,
-	FireAsync:			  (self: ISignal, ...any) -> nil,
-	Connect: 			  (self: ISignal, (...any) -> any) -> IConnection,
 }
 
-
-
-local Signals: ISignal = {}
-
-local Signal: ISignal = {}
+local Signal = {}
 Signal.__index = Signal
 
-local Connection: IConnection = {}
+local Connection = {}
 Connection.__index = Connection
+
+
+export type ISignal = typeof(setmetatable({} :: ISignal_fields,	Signal))
+export type IConnection = typeof(setmetatable({} :: IConnection_fields,	Connection))
+
+local Signals: {[string]: ISignal} = {}
+
 
 
 
 -- Creates new Signal.
 function Signal.new(Name: string?): ISignal
-	local result: ISignal = setmetatable({}, Signal)
+	local result = setmetatable({} :: ISignal_fields, Signal)
 	result.Connections = {}
+	result.Yielded = false
+	
 	if Name then
 		result.Name = Name
 		Signals[Name] = result 
@@ -54,19 +47,21 @@ function Signal.new(Name: string?): ISignal
 	return result
 end
 
+-- Gets signal by name.
 function Signal.Get(Name: string): ISignal
 	return Signals[Name]
 end
 
-function Signal.WaitForSignal(Name: string, Timeout: number?): ISignal
+-- Yields thread until signal is a created
+function Signal.WaitForSignal(Name: string, Timeout: number): ISignal
 	local start = tick()
 	Timeout = Timeout or 15
 	
-	while Signals[Name] == nil do
+	while not Signals[Name] do
 		task.wait()
-		if start then
+		if start ~= -1 then
 			if tick() - start > Timeout then
-				start = nil
+				start = -1
 				warn(`It seems like there is no Signal "${Name}".`)
 			end
 		end
@@ -101,9 +96,10 @@ end
 
 -- Connect a new function to signal and return Connection.
 function Signal:Connect(Function: (...any) -> nil): IConnection
-	local result: IConnection = setmetatable({}, Connection)
+	local result = setmetatable({} :: IConnection_fields, Connection)
 	result.Signal = self
 	result.Function = Function
+	
 	table.insert(self.Connections, result)
 	return result
 end
